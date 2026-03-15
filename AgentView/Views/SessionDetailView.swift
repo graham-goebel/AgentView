@@ -128,7 +128,7 @@ struct SessionHeaderView: View {
                     .foregroundColor(.secondary)
                 Text("ID")
                     .font(.system(size: 9))
-                    .foregroundColor(.tertiary)
+                    .foregroundColor(Color(NSColor.tertiaryLabelColor))
             }
         }
     }
@@ -238,7 +238,7 @@ struct MessageBubble: View {
                     }
                     Text(message.timestamp, style: .relative)
                         .font(.caption2)
-                        .foregroundColor(.tertiary)
+                        .foregroundColor(Color(NSColor.tertiaryLabelColor))
                 }
 
                 // Content bubble
