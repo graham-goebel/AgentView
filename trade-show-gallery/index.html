@@ -53,9 +53,16 @@
         <button class="icon-btn" id="sidebarToggle" type="button" aria-label="Toggle filters" title="Toggle filters">
           <svg viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
         </button>
+        <button class="icon-btn" id="clockBtn" type="button" aria-label="Start clock screensaver" title="Clock screensaver">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        </button>
         <button class="icon-btn" id="fullscreenBtn" type="button" aria-label="Full screen" title="Full screen">
           <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
         </button>
+      </div>
+      <div class="clock-caption" id="clockCaption" aria-live="polite">
+        <div class="clock-date" id="clockDate"></div>
+        <div class="clock-touch">Touch anywhere to explore our products</div>
       </div>
       <div class="hint" id="hint">Drag to spin · Scroll or pinch to zoom · Tap a product for details</div>
     </main>

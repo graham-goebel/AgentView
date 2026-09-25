@@ -5,7 +5,8 @@ An interactive 3D product sphere for trade show screens and kiosks. Plain HTML, 
 - **Sphere**: every product photo floats on a rotating sphere. Drag or swipe to spin it, and scroll or pinch to zoom. When nobody is touching it, it spins slowly on its own.
 - **Sidebar**: search, filter chips (category, material, process, finish, industry) with live counts, and sliders for object size, sphere size and spin speed.
 - **Detail view**: tap a product and it flies up to full size next to its description and specs. Use Previous and Next (or ← →) to step through the filtered products, and Esc to close.
-- **Kiosk mode**: after 90 seconds with nobody touching the screen, the gallery closes the detail view, clears filters and goes back to spinning. You can change this in `config.js`.
+- **Clock screensaver**: after 60 seconds with nobody touching the screen, products fly off the sphere and line up into a dot-matrix clock (HH:MM, with the date underneath). Any touch sends them back to the sphere. The clock button in the top-left corner starts it by hand.
+- **Kiosk reset**: starting the screensaver also closes the detail view and clears filters, so each visitor starts fresh. The timings and 12/24-hour format are in `config.js`.
 
 ## Run it
 

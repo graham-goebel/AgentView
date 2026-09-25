@@ -183,6 +183,22 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 }
 .hint.gone { opacity: 0; }
 
+/* ---------- Screensaver clock ---------- */
+
+.clock-caption {
+  position: absolute; left: 50%; top: 0;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 3000;
+}
+.clock-date { font-size: clamp(16px, 2.2vw, 30px); font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; }
+.clock-touch { margin-top: 10px; color: var(--muted); font-size: clamp(13px, 1.3vw, 18px); animation: breathe 3s ease-in-out infinite; }
+@keyframes breathe { 50% { opacity: 0.35; } }
+.app.screensaver .stage { cursor: none; }
+.app.screensaver .stage-controls, .app.screensaver .hint { opacity: 0; pointer-events: none; }
+.stage-controls { transition: opacity 0.4s; }
+
 /* ---------- Detail view ---------- */
 
 .detail { position: fixed; inset: 0; z-index: 20000; display: grid; place-items: center; padding: 32px; }

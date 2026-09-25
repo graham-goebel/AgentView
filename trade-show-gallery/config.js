@@ -18,6 +18,13 @@ window.GALLERY_CONFIG = {
   // clear search and filters, and resume spinning. Set to 0 to turn off.
   idleResetSeconds: 90,
 
+  // Screensaver: after this many seconds without a touch, the products fly off the
+  // sphere and form a clock. Any touch brings the sphere back. Set to 0 to turn off.
+  screensaverSeconds: 60,
+
+  // Clock format for the screensaver: false = 12-hour (9:41), true = 24-hour (21:41).
+  clock24h: false,
+
   // Base spin speed in degrees per second (the sidebar slider multiplies this).
   spinDegreesPerSecond: 6,
 };

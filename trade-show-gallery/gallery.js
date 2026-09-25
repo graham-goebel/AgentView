@@ -48,6 +48,31 @@
 
   const tiles = new Map();   // key -> tile record
 
+  // Screensaver clock: products fly off the sphere and form a dot-matrix HH:MM.
+  const clock = {
+    active: false,
+    dim: 0,            // 0..1, how far the sphere has faded behind the clock
+    text: "",
+    pixels: [],        // [{col, row, colon, key}]
+    cols: 0,
+    extras: 0,         // clone tiles created when the catalog is too small to draw the digits
+    wasCollapsed: false,
+    exitedAt: 0,
+  };
+  const CLOCK_FLIGHT = 1.1;   // seconds for a product to fly between sphere and clock
+  const DIGITS = {
+    0: [".###.", "#...#", "#...#", "#...#", "#...#", "#...#", ".###."],
+    1: ["..#..", ".##..", "..#..", "..#..", "..#..", "..#..", ".###."],
+    2: [".###.", "#...#", "....#", "...#.", "..#..", ".#...", "#####"],
+    3: ["#####", "...#.", "..#..", "...#.", "....#", "#...#", ".###."],
+    4: ["...#.", "..##.", ".#.#.", "#..#.", "#####", "...#.", "...#."],
+    5: ["#####", "#....", "####.", "....#", "....#", "#...#", ".###."],
+    6: ["..##.", ".#...", "#....", "####.", "#...#", "#...#", ".###."],
+    7: ["#####", "....#", "...#.", "..#..", ".#...", ".#...", ".#..."],
+    8: [".###.", "#...#", "#...#", ".###.", "#...#", "#...#", ".###."],
+    9: [".###.", "#...#", "#...#", ".####", "....#", "...#.", ".##.."],
+  };
+
   // ---------- Filtering ----------
 
   const valuesOf = (product, key) => {
@@ -147,7 +172,8 @@
     el.appendChild(img);
     el.dataset.key = key;
     sphereEl.appendChild(el);
-    const tile = { key, el, product, cur: null, target: null, presence: 0, show: false };
+    const tile = { key, el, product, cur: null, target: null, presence: 0, show: false,
+      pixel: null, lastPixel: null, clockMix: 0, clockWait: 0 };
     tiles.set(key, tile);
     return tile;
   }
@@ -232,6 +258,9 @@
     const cY = Math.cos(state.yaw), sY = Math.sin(state.yaw);
     const cP = Math.cos(state.pitch), sP = Math.sin(state.pitch);
 
+    clock.dim += ((clock.active ? 1 : 0) - clock.dim) * (1 - Math.pow(0.95, k60));
+    if (Math.abs(clock.dim - (clock.active ? 1 : 0)) < 0.002) clock.dim = clock.active ? 1 : 0;
+
     // Background dot sphere
     ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
     ctx.clearRect(0, 0, state.w, state.h);
@@ -240,7 +269,7 @@
       const r = rotate(p, cY, sY, cP, sP);
       const f = D / (D - r.z * dotR);
       const t = (r.z + 1) / 2;
-      ctx.globalAlpha = 0.05 + 0.3 * t * t;
+      ctx.globalAlpha = (0.05 + 0.3 * t * t) * (1 - 0.75 * clock.dim);
       ctx.fillStyle = "#9fb4cc";
       ctx.beginPath();
       ctx.arc(cx + r.x * dotR * f, cy + r.y * dotR * f, 1.1 * f, 0, Math.PI * 2);
@@ -252,14 +281,19 @@
     const spacing = R * Math.sqrt((4 * Math.PI) / Math.max(1, state.slotCount));
     const baseSize = Math.max(32, Math.min(200, spacing * 0.6)) * state.objectScale;
     const move = 1 - Math.pow(0.9, k60);
+    const cl = clockLayout();
+    const pulse = 0.5 + 0.5 * Math.cos((Date.now() % 1000) / 1000 * 2 * Math.PI);
     for (const tile of tiles.values()) {
-      if (!tile.show && tile.presence <= 0.005) continue;
-      tile.presence += ((tile.show ? 1 : 0) - tile.presence) * (1 - Math.pow(0.85, k60));
-      if (!tile.show && tile.presence <= 0.005) {
-        tile.presence = 0;
-        tile.el.style.display = "none";
+      const goal = tile.pixel ? 1 : 0;
+      if (tile.clockMix !== goal && now >= tile.clockWait) {
+        tile.clockMix = goal ? Math.min(1, tile.clockMix + dt / CLOCK_FLIGHT) : Math.max(0, tile.clockMix - dt / CLOCK_FLIGHT);
+      }
+      if (!tile.show && tile.presence <= 0.005 && tile.clockMix === 0) {
+        if (tile.el.style.display !== "none") tile.el.style.display = "none";
         continue;
       }
+      tile.presence += ((tile.show ? 1 : 0) - tile.presence) * (1 - Math.pow(0.85, k60));
+      if (tile.el.style.display === "none") tile.el.style.display = "";
       // Glide towards the target slot along the sphere surface.
       const c = tile.cur, g = tile.target;
       c.x += (g.x - c.x) * move; c.y += (g.y - c.y) * move; c.z += (g.z - c.z) * move;
@@ -267,17 +301,37 @@
       const r = rotate({ x: c.x / len, y: c.y / len, z: c.z / len }, cY, sY, cP, sP);
       const f = D / (D - r.z * R);
       const t = (r.z + 1) / 2;
-      const size = baseSize * f * tile.presence;
-      const x = cx + r.x * R * f;
-      const y = cy + r.y * R * f;
+      let size = baseSize * f * tile.presence;
+      let x = cx + r.x * R * f;
+      let y = cy + r.y * R * f;
+      let opacity = (0.22 + 0.78 * Math.pow(t, 1.4)) * Math.min(1, tile.presence * 1.5) * (1 - 0.93 * clock.dim);
+      let z = Math.round(t * 1000);
       tile.screen = { x, y, size };
+
+      if (tile.clockMix > 0) {
+        const e = easeInOut(tile.clockMix);
+        const p = tile.pixel || tile.lastPixel;
+        const px0 = cl.x0 + (p.col + 0.5) * cl.cell;
+        const py0 = cl.y0 + (p.row + 0.5) * cl.cell + Math.sin(now / 900 + p.col * 0.45 + p.row * 0.3) * cl.cell * 0.05;
+        const pixelOpacity = p.colon ? 0.5 + 0.5 * pulse : 1;
+        x += (px0 - x) * e;
+        y += (py0 - y) * e;
+        size = (size + (cl.cell * 0.92 - size) * e) * (1 + 0.35 * Math.sin(Math.PI * e));
+        opacity += (pixelOpacity - opacity) * e;
+        z = 2000 + Math.round(e * 100);
+      }
       tile.el.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0) scale(${(size / TILE_BASE).toFixed(4)})`;
-      tile.el.style.opacity = ((0.22 + 0.78 * Math.pow(t, 1.4)) * Math.min(1, tile.presence * 1.5)).toFixed(3);
-      tile.el.style.zIndex = String(Math.round(t * 1000));
+      tile.el.style.opacity = opacity.toFixed(3);
+      tile.el.style.zIndex = String(z);
+    }
+    if (clock.active || clock.dim > 0) {
+      const caption = $("clockCaption");
+      caption.style.opacity = clock.dim.toFixed(3);
+      caption.style.transform = `translate(-50%, ${(cl.y0 + cl.cell * 7 + 28).toFixed(0)}px)`;
     }
 
     const h = state.hovered;
-    if (h && h.screen && h.show && !pointer.dragging && state.openIndex < 0) {
+    if (h && h.screen && h.show && !pointer.dragging && state.openIndex < 0 && !clock.active) {
       hoverLabel.textContent = h.product.name;
       hoverLabel.style.transform = `translate(${h.screen.x.toFixed(0)}px, ${(h.screen.y + h.screen.size / 2 + 10).toFixed(0)}px) translateX(-50%)`;
       hoverLabel.classList.add("show");
@@ -557,6 +611,7 @@
   if (window.matchMedia("(max-width: 820px)").matches) app.classList.add("collapsed");
 
   document.addEventListener("keydown", (e) => {
+    if (clock.active) { e.preventDefault(); exitClock(); return; }
     touched();
     if (state.openIndex >= 0) {
       if (e.key === "Escape") closeDetail();
@@ -570,19 +625,170 @@
   });
   document.addEventListener("pointerdown", touched, true);
 
-  // Kiosk idle reset
-  if (CONFIG.idleResetSeconds > 0) {
-    setInterval(() => {
-      if (performance.now() - state.lastInteraction < CONFIG.idleResetSeconds * 1000) return;
-      const dirty = state.openIndex >= 0 || state.query || state.zoom !== 1 ||
-        Object.values(state.selected).some((s) => s.size);
-      if (!dirty) return;
-      closeDetail();
-      resetAll();
-      search.blur();
-      $("hint").classList.remove("gone");
-    }, 5000);
+  // Kiosk idle: first reset filters and close the detail view, then start the clock screensaver.
+  setInterval(() => {
+    if (clock.active) return;
+    const idle = (performance.now() - state.lastInteraction) / 1000;
+    if (CONFIG.screensaverSeconds > 0 && idle >= CONFIG.screensaverSeconds) {
+      enterClock();
+      return;
+    }
+    if (!(CONFIG.idleResetSeconds > 0) || idle < CONFIG.idleResetSeconds) return;
+    const dirty = state.openIndex >= 0 || state.query || state.zoom !== 1 ||
+      Object.values(state.selected).some((s) => s.size);
+    if (!dirty) return;
+    closeDetail();
+    resetAll();
+    search.blur();
+    $("hint").classList.remove("gone");
+  }, 1000);
+
+  // ---------- Screensaver clock ----------
+
+  function easeInOut(t) {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
   }
+
+  function clockText(d) {
+    let h = d.getHours();
+    if (!CONFIG.clock24h) h = h % 12 || 12;
+    const hh = CONFIG.clock24h ? String(h).padStart(2, "0") : String(h);
+    return `${hh}:${String(d.getMinutes()).padStart(2, "0")}`;
+  }
+
+  // Grid cells lit for a "H:MM" / "HH:MM" string (5x7 digits, 1-column gaps).
+  function clockPixels(text) {
+    const pixels = [];
+    let col = 0;
+    for (const ch of text) {
+      if (ch === ":") {
+        col += 1;
+        for (const row of [2, 4]) pixels.push({ col, row, colon: true });
+        col += 3;
+        continue;
+      }
+      DIGITS[ch].forEach((line, row) => {
+        [...line].forEach((c, i) => { if (c === "#") pixels.push({ col: col + i, row, colon: false }); });
+      });
+      col += 6;
+    }
+    clock.cols = col - 1;
+    return pixels.map((p) => ({ ...p, key: `${p.col},${p.row}` }));
+  }
+
+  function clockLayout() {
+    const cols = clock.cols || 23;
+    const cell = Math.min((state.w * 0.84) / cols, (state.h * 0.5) / 7);
+    return { cell, x0: (state.w - cols * cell) / 2, y0: state.h * 0.44 - (7 * cell) / 2 };
+  }
+
+  function makeExtraTile() {
+    const product = PRODUCTS[clock.extras % PRODUCTS.length];
+    const tile = makeTile(`clk~${clock.extras++}`, product);
+    const v = fibonacciPoint(Math.floor(Math.random() * 97), 97);
+    tile.cur = { ...v };
+    tile.target = v;
+    tile.el.tabIndex = -1;
+    return tile;
+  }
+
+  function assignClock(entering) {
+    const now = performance.now();
+    const pixels = clockPixels(clock.text);
+    const layout = clockLayout();
+    const keep = new Map();
+    for (const t of tiles.values()) if (t.pixel) keep.set(t.pixel.key, t);
+
+    const wanted = new Set(pixels.map((p) => p.key));
+    for (const [key, t] of keep) {
+      if (!wanted.has(key)) {
+        t.lastPixel = t.pixel;
+        t.pixel = null;
+        t.clockWait = now + Math.random() * 300;
+      }
+    }
+    const free = [...tiles.values()].filter((t) => !t.pixel && t.clockMix === 0 && (t.show || t.key.startsWith("clk~")));
+    const todo = pixels.filter((p) => !keep.has(p.key)).sort(() => Math.random() - 0.5);
+    for (const p of todo) {
+      const tx = layout.x0 + (p.col + 0.5) * layout.cell;
+      const ty = layout.y0 + (p.row + 0.5) * layout.cell;
+      let best = -1, bestD = Infinity;
+      free.forEach((t, i) => {
+        const s = t.screen || { x: state.w / 2, y: state.h / 2 };
+        const d = (s.x - tx) ** 2 + (s.y - ty) ** 2 + (t.show ? 0 : 1e7);
+        if (d < bestD) { bestD = d; best = i; }
+      });
+      const tile = best >= 0 ? free.splice(best, 1)[0] : makeExtraTile();
+      tile.pixel = p;
+      tile.lastPixel = p;
+      tile.clockWait = now + Math.random() * (entering ? 900 : 350);
+    }
+    for (const t of tiles.values()) if (t.pixel) t.pixel = pixels.find((p) => p.key === t.pixel.key);
+    clock.pixels = pixels;
+  }
+
+  function updateClockCaption(d) {
+    const date = d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+    const ampm = CONFIG.clock24h ? "" : `${d.getHours() < 12 ? "AM" : "PM"} · `;
+    $("clockDate").textContent = `${ampm}${date}`;
+  }
+
+  function tickClock() {
+    if (!clock.active) return;
+    const d = new Date();
+    updateClockCaption(d);
+    const text = clockText(d);
+    if (text !== clock.text) {
+      clock.text = text;
+      assignClock(false);
+    }
+  }
+  setInterval(tickClock, 1000);
+
+  function enterClock() {
+    if (clock.active || !PRODUCTS.length) return;
+    closeDetail();
+    resetAll();
+    search.blur();
+    setHover(null);
+    state.focus = null;
+    clock.active = true;
+    clock.wasCollapsed = app.classList.contains("collapsed");
+    app.classList.add("collapsed", "screensaver");
+    $("hint").classList.add("gone");
+    const d = new Date();
+    clock.text = clockText(d);
+    updateClockCaption(d);
+    assignClock(true);
+  }
+
+  function exitClock() {
+    if (!clock.active) return;
+    clock.active = false;
+    clock.exitedAt = performance.now();
+    const now = performance.now();
+    for (const t of tiles.values()) {
+      if (t.pixel) {
+        t.lastPixel = t.pixel;
+        t.pixel = null;
+        t.clockWait = now + Math.random() * 400;
+      }
+    }
+    app.classList.remove("screensaver");
+    if (!clock.wasCollapsed) app.classList.remove("collapsed");
+    touched();
+  }
+
+  // Any touch or key wakes the gallery; that first touch doesn't also spin or open things.
+  document.addEventListener("pointerdown", (e) => {
+    if (!clock.active) return;
+    e.stopPropagation();
+    e.preventDefault();
+    exitClock();
+  }, true);
+  $("clockBtn").addEventListener("click", () => {
+    if (performance.now() - clock.exitedAt > 500) enterClock();
+  });
 
   // ---------- Sizing ----------
 
