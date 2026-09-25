@@ -29,7 +29,7 @@ button { font: inherit; color: inherit; }
 
 svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
-.app { display: flex; height: 100vh; height: 100dvh; }
+.app { display: flex; height: 100%; }
 
 /* ---------- Sidebar ---------- */
 
