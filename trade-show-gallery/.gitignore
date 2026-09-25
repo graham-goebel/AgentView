@@ -1,0 +1,3 @@
+# Original high-res photos stay local; the generated images/ and thumbs/ are committed.
+photos/*
+!photos/.gitkeep
