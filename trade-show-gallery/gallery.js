@@ -270,7 +270,7 @@
       const f = D / (D - r.z * dotR);
       const t = (r.z + 1) / 2;
       ctx.globalAlpha = (0.05 + 0.3 * t * t) * (1 - 0.75 * clock.dim);
-      ctx.fillStyle = "#9fb4cc";
+      ctx.fillStyle = "#e4e8cf";
       ctx.beginPath();
       ctx.arc(cx + r.x * dotR * f, cy + r.y * dotR * f, 1.1 * f, 0, Math.PI * 2);
       ctx.fill();
@@ -477,7 +477,7 @@
     const idx = state.filtered.indexOf(product);
     state.openIndex = idx;
     $("detailCategory").textContent = product.category || "Product";
-    $("detailName").textContent = product.name;
+    $("detailName").innerHTML = `${escapeHtml(product.name)}<span class="dot">.</span>`;
     $("detailDesc").textContent = product.description || "";
     $("detailDesc").hidden = !product.description;
 
