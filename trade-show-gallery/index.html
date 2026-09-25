@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Mark One Product Gallery</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app" id="app">
+    <aside class="sidebar" id="sidebar" aria-label="Search and filters">
+      <header class="brand">
+        <div class="brand-mark">MARK ONE</div>
+        <div class="brand-sub">Product Gallery</div>
+      </header>
+
+      <div class="field search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="search" type="search" placeholder="Search products, materials, tags…" autocomplete="off" aria-label="Search products">
+      </div>
+
+      <div class="result-row">
+        <span id="resultCount">0 products</span>
+        <button class="link-btn" id="resetBtn" type="button">Reset</button>
+      </div>
+
+      <div id="filterGroups"></div>
+
+      <section class="group">
+        <h3>Display</h3>
+        <label class="slider">
+          <span>Object size <output id="objectScaleOut">100%</output></span>
+          <input id="objectScale" type="range" min="40" max="200" value="100" step="5">
+        </label>
+        <label class="slider">
+          <span>Sphere size <output id="sphereScaleOut">100%</output></span>
+          <input id="sphereScale" type="range" min="50" max="160" value="100" step="5">
+        </label>
+        <label class="slider">
+          <span>Spin speed <output id="spinOut">100%</output></span>
+          <input id="spin" type="range" min="0" max="300" value="100" step="10">
+        </label>
+      </section>
+    </aside>
+
+    <main class="stage" id="stage">
+      <canvas id="dots" aria-hidden="true"></canvas>
+      <div class="sphere" id="sphere" role="list" aria-label="Products"></div>
+      <div class="hover-label" id="hoverLabel" aria-hidden="true"></div>
+      <div class="empty" id="empty" hidden>No products match these filters.</div>
+
+      <div class="stage-controls">
+        <button class="icon-btn" id="sidebarToggle" type="button" aria-label="Toggle filters" title="Toggle filters">
+          <svg viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+        </button>
+        <button class="icon-btn" id="fullscreenBtn" type="button" aria-label="Full screen" title="Full screen">
+          <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+        </button>
+      </div>
+      <div class="hint" id="hint">Drag to spin · Scroll or pinch to zoom · Tap a product for details</div>
+    </main>
+  </div>
+
+  <div class="detail" id="detail" hidden>
+    <div class="detail-backdrop" data-close></div>
+    <div class="detail-card" role="dialog" aria-modal="true" aria-labelledby="detailName">
+      <div class="detail-media" id="detailMedia">
+        <img id="detailImg" alt="">
+      </div>
+      <div class="detail-info">
+        <div class="detail-top">
+          <span class="pill" id="detailCategory"></span>
+          <button class="icon-btn close" type="button" data-close aria-label="Close">
+            <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <h2 id="detailName"></h2>
+        <p id="detailDesc"></p>
+        <dl class="facts" id="detailFacts"></dl>
+        <div class="tags" id="detailTags"></div>
+        <div class="detail-nav">
+          <button class="nav-btn" id="prevBtn" type="button">← Previous</button>
+          <span id="detailPos"></span>
+          <button class="nav-btn" id="nextBtn" type="button">Next →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <img class="fly" id="fly" alt="" aria-hidden="true">
+
+  <script src="config.js"></script>
+  <script src="products.js"></script>
+  <script src="gallery.js"></script>
+</body>
+</html>
